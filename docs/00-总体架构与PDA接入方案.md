@@ -26,7 +26,7 @@
 | 本方案 | 客户架构中的位置 | 说明 |
 |---|---|---|
 | **PDS** | PDS 统一权限 | 一致。除 PDK、PAP 外，后续还要服务 PDQ、PBI、PDT、PDD 及应用层，所以按**多应用通用**设计 |
-| **PDK** | 数据出口层 · PDK 知识服务 | 一致。客户架构中"企业知识"（Word/PDF/Excel/Markdown/图片/音视频）的解析、标注、审核原本属于 PDP/PDL/PDR。**一期这些平台尚未建成**，PDK 内置一条"知识专用清洗通道"（MinerU 解析 = PDP 能力，切片与 AI 打标 = PDL 能力，审核发布 = PDR 能力），按可替换模块设计，待 PDP/PDL/PDR 建成后切换为调用它们 |
+| **PDK** | 数据出口层 · PDK 知识服务 | 一致。PDK 有两个后台：面向各景区知识管理员的"知识管理后台"，以及面向开发/运营的"知识接入与治理台"（飞书/文件/链接/数据库接入 → AI 标注到数据域、业务域 → 复核 → 路由入库）。客户架构中"企业知识"（Word/PDF/Excel/Markdown/图片/音视频）的解析、标注、审核原本属于 PDP/PDL/PDR。**一期这些平台尚未建成**，PDK 内置一条"知识专用清洗通道"（MinerU 解析 = PDP 能力，切片与 AI 打标 = PDL 能力，审核发布 = PDR 能力），按可替换模块设计，待 PDP/PDL/PDR 建成后切换为调用它们 |
 | **PDA**（hermes-agent） | 查数层 · **PAP 智能体平台** | PDA 即 PAP 的智能体内核与知识问答出口。PAP 的"意图识别 · 流量分发 · 智能体管理"由 hermes 的模型路由、技能、子代理加上 PD 插件实现；问知识走 PDK 工具，问数据（后续）走 PDQ/PDD 工具 |
 | 公共能力 | PBS 公共底座 | PDK/PDS/PDA 不自建基础设施：API 网关、配置中心、消息总线、任务编排、对象存储、监控告警、通知统一使用 PBS（PBS 未就绪时以同类开源组件临时替代，接口保持一致） |
 | 反馈数据 | 回流平台 | PDA 的点赞/点踩/纠错、PDK 的审核修正与工单结果、知识使用热度，通过消息总线统一推送到回流平台 |
@@ -218,6 +218,8 @@ PDS 授权变更 → 发布 `authz.changed` 事件（MQ 或 Webhook）→ PDK、
 | `pdk:apikey:manage` | 开放接口密钥管理 | 功能 | |
 | `pdk:pda:manage` | PDA 运营配置 | 功能 | 见 PDK 文档"PDA 管理" |
 
+**知识接入与治理台权限点**（详见 `03-PDK知识接入与治理台.md` §4）：`pdk:studio:access`、`pdk:source:view`、`pdk:source:manage`、`pdk:credential:manage`、`pdk:taxonomy:manage`、`pdk:label:task`、`pdk:label:review`、`pdk:route:manage`、`pdk:pipeline:manage`、`pdk:map:view`、`pdk:studio:cost`。
+
 **数据资源（实例级）**：`pdk:kb:{知识库ID}`，动作 `read`（检索/查看）、`write`（上传/编辑）、`admin`（管理/授权）。可授权给：组织节点（含/不含下级）、岗位、角色、用户组、**具体人员**；支持"禁止"授权。
 
 ### 6.2 PDA 权限点
@@ -249,6 +251,7 @@ PDS 授权变更 → 发布 `authz.changed` 事件（MQ 或 Webhook）→ PDK、
 | `SCENIC_LIST` | 指定景区列表 |
 | `ALL` | 全集团 |
 | `CUSTOM` | 自定义组织节点集合 |
+| `DOMAIN` | 指定数据域/业务域节点（用于治理台复核任务分派） |
 
 ## 7. 部署建议
 
@@ -290,5 +293,6 @@ PDS 授权变更 → 发布 `authz.changed` 事件（MQ 或 Webhook）→ PDK、
 |---|---|
 | PDK 产品功能文档 | `pd_knowledge_service/docs/01-PDK产品功能文档.md` |
 | PDK 技术方案 | `pd_knowledge_service/docs/02-PDK技术方案.md` |
+| PDK 知识接入与治理台（功能+技术） | `pd_knowledge_service/docs/03-PDK知识接入与治理台.md` |
 | PDS 产品功能文档 | `pd_centralized_permission/docs/01-PDS产品功能文档.md` |
 | PDS 技术方案 | `pd_centralized_permission/docs/02-PDS技术方案.md` |
