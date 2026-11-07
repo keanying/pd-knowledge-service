@@ -276,7 +276,19 @@ PDS 授权变更 → 发布 `authz.changed` 事件（MQ 或 Webhook）→ PDK、
 | 二期 | PDS：字段脱敏全量、授权审批、三员分立、审计告警；PDK：数据源同步、增量更新、审核发布、纠错闭环、评测；PDA：技能管理、按人记忆、定时任务、模型分级授权 |
 | 三期 | 知识专题页（汇编）、知识冲突检测、知识图谱、多模态检索、移动端/企业微信/钉钉接入 |
 
-## 9. UI 说明
+## 9. 品牌与 UI 说明
+
+### 9.1 品牌规范（客户提供的标志）
+
+| 系统 | 标志 | 品牌色 |
+|---|---|---|
+| PDS 统一权限 | 圆环中的绿色 "P" + 右上两道信号弧；图标版为蓝底圆角方块 | 主色 `#1E50E6`（蓝）、强调色 `#22E59A`（绿）、白 |
+| PDA 智能助手 | 由三块拼成的 "P" 形对话气泡，内有两只"眼睛" | `#1677FF`（亮蓝）、`#1A2BB8`（深蓝）、`#59C8FF`（浅蓝） |
+
+- PDS 登录页、修改密码页已按 PDS 品牌色实现（标志为矢量近似版，拿到设计源文件后替换 `pds-server/src/main/resources/static/assets/pds-logo.svg`）。
+- UX Pilot 已生成的界面使用的是参考模板的黄绿色，后续按上表品牌色统一调整：PDS/PDK 管理后台用 PDS 蓝 + 绿，PDA 问答门户用 PDA 蓝系。
+
+### 9.2 UI 模板
 
 本阶段只出功能与技术方案，界面后续用 UX Pilot 设计。客户已提供两套风格参考：
 
@@ -287,6 +299,10 @@ PDS 授权变更 → 发布 `authz.changed` 事件（MQ 或 Webhook）→ PDK、
 
 两份产品功能文档中已列出这些页面所需的功能点，便于后续直接转为 UX Pilot 设计输入。
 
+### 9.3 PDS 通用性
+
+PDS 面向客户总体架构中的全部系统（PDQ、PBI、PAP、PDT、PDD、PDG、PDE、PDP、PDL、PDR、PDC 及应用层），不只服务 PDK 与 PDA。所有系统按同一方式接入：注册权限清单与资源类型 → 创建 OAuth 客户端 → 集成鉴权与审计，详见 `pd_centralized_permission/docs/03-应用接入指南.md`。
+
 ## 10. 相关文档
 
 | 文档 | 位置 |
@@ -296,3 +312,4 @@ PDS 授权变更 → 发布 `authz.changed` 事件（MQ 或 Webhook）→ PDK、
 | PDK 知识接入与治理台（功能+技术） | `pd_knowledge_service/docs/03-PDK知识接入与治理台.md` |
 | PDS 产品功能文档 | `pd_centralized_permission/docs/01-PDS产品功能文档.md` |
 | PDS 技术方案 | `pd_centralized_permission/docs/02-PDS技术方案.md` |
+| PDS 应用接入指南 | `pd_centralized_permission/docs/03-应用接入指南.md` |
