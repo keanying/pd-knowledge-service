@@ -6,6 +6,7 @@ import {
 } from '@kousum/semi-icons-vue'
 import Composer from './components/Composer.vue'
 import Answer from './components/Answer.vue'
+import ProcessTimeline, { type Step } from './components/ProcessTimeline.vue'
 import { ago, call, chatStream, greeting, type Citation, type Conversation, type Home, type Message } from './api'
 
 const home = ref<Home | null>(null)
@@ -21,7 +22,7 @@ onMounted(loadHome)
 // ---------------- 对话
 const view = ref<'home' | 'chat'>('home')
 const conv = ref<Conversation | null>(null)
-const messages = ref<(Message & { pending?: boolean; progress?: string; error?: string; open?: boolean })[]>([])
+const messages = ref<(Message & { pending?: boolean; progress?: string; error?: string; open?: boolean; plan?: string; steps?: Step[]; elapsed_ms?: number | null })[]>([])
 const mode = ref<'quick' | 'deep'>('quick')
 const busy = ref(false)
 let abort: AbortController | null = null
@@ -32,7 +33,7 @@ async function send(text: string) {
   if (!home.value?.can_chat) return
   view.value = 'chat'
   messages.value.push({ role: 'user', content: text })
-  const ans = { role: 'assistant' as const, content: '', citations: [] as Citation[], pending: true, progress: '正在思考…', feedback: null as string | null, open: false }
+  const ans = { role: 'assistant' as const, content: '', citations: [] as Citation[], pending: true, progress: '正在思考…', feedback: null as string | null, open: false, plan: '', steps: [] as Step[], elapsed_ms: null as number | null }
   messages.value.push(ans)
   const msg = messages.value[messages.value.length - 1]
   busy.value = true
@@ -42,13 +43,18 @@ async function send(text: string) {
     await chatStream({ message: text, conversation_id: conv.value?.id, mode: mode.value }, (ev, data) => {
       if (ev === 'meta') conv.value = { id: data.conversation_id, title: conv.value?.title || text.slice(0, 30), updated_at: Date.now() / 1000 }
       else if (ev === 'progress') msg.progress = data.message
+      else if (ev === 'plan') { msg.plan = data.text; msg.steps = data.steps; msg.progress = '' }
+      else if (ev === 'step') { const k = msg.steps!.findIndex((x) => x.key === data.key); if (k >= 0) msg.steps!.splice(k, 1, data); scrollDown() }
       else if (ev === 'citations') msg.citations = data.items
       else if (ev === 'delta') { msg.content += data.text; msg.progress = ''; scrollDown() }
-      else if (ev === 'done') { msg.content = data.text; msg.pending = false }
+      else if (ev === 'done') { msg.content = data.text; msg.pending = false; msg.elapsed_ms = data.elapsed_ms }
       else if (ev === 'error') { msg.error = data.message; msg.pending = false }
     }, abort.signal)
   } catch (e: any) {
-    if (e.name !== 'AbortError') msg.error = e.message
+    if (e.name === 'AbortError') {
+      msg.steps?.forEach((x) => { if (x.status === 'running' || x.status === 'pending') x.status = 'skipped' })
+      msg.error = '已中止执行'
+    } else msg.error = e.message
   } finally {
     msg.pending = false
     busy.value = false
@@ -210,7 +216,9 @@ function logout() { location.href = '/auth/logout' }
             <template v-for="(m, i) in messages" :key="i">
               <div v-if="m.role === 'user'" class="self-end rounded-[20px] rounded-br-md bg-primary px-4 py-2.5 text-[15px] leading-7 text-white shadow-[0_6px_18px_rgba(99,102,241,.25)]">{{ m.content }}</div>
               <div v-else class="glass-strong rounded-[22px] px-6 py-5">
-                <div v-if="m.progress && !m.content" class="shimmer text-[14px]">{{ m.progress }}</div>
+                <div v-if="m.plan" class="mb-3 text-[14px] leading-7 text-[#3C4066]">{{ m.plan }}</div>
+                <ProcessTimeline v-if="m.steps?.length" class="mb-4" :steps="m.steps" :running="!!m.pending" :elapsed-ms="m.elapsed_ms" />
+                <div v-if="m.progress && !m.content && !m.steps?.length" class="shimmer text-[14px]">{{ m.progress }}</div>
                 <Answer v-if="m.content" :text="m.content" @cite="showCite(m, $event)" />
                 <span v-if="m.pending && m.content" class="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded bg-primary align-middle" />
                 <div v-if="m.error" class="rounded-xl bg-[#FEF2F2] px-3 py-2 text-[13px] text-[#B91C1C]">{{ m.error }}</div>

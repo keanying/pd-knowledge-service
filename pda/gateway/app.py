@@ -278,8 +278,9 @@ def _sse(event: str, data: Any) -> bytes:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n".encode()
 
 
-def _finish(conv: dict, sess: dict, text: str, citations: list[dict]) -> dict:
-    msg = {"role": "assistant", "content": text, "citations": citations, "at": time.time(), "feedback": None}
+def _finish(conv: dict, sess: dict, text: str, citations: list[dict], run: Any = None) -> dict:
+    msg = {"role": "assistant", "content": text, "citations": citations, "at": time.time(), "feedback": None,
+           "steps": run.steps if run else [], "elapsed_ms": run.elapsed_ms if run else None}
     conv["messages"].append(msg)
     conv["updated_at"] = time.time()
     docs = _recent_docs.setdefault(sess["user_id"], {})
@@ -287,11 +288,11 @@ def _finish(conv: dict, sess: dict, text: str, citations: list[dict]) -> dict:
         s = c["source"]
         docs[s["doc_id"]] = {"doc_id": s["doc_id"], "title": s["doc_title"], "kb_name": s.get("kb_name"),
                              "version_no": s.get("version_no"), "at": time.time()}
-    return {"conversation_id": conv["id"], "message_index": len(conv["messages"]) - 1, "text": text}
+    return {"conversation_id": conv["id"], "message_index": len(conv["messages"]) - 1, "text": text,
+            "elapsed_ms": msg["elapsed_ms"]}
 
 
-async def _search(session_id: str, sess: dict, query: str, top_k: int, kb_ids: list[str] | None) -> list[dict]:
-    ticket = await asyncio.to_thread(pds.exchange, session_id, sess["access_token"], "pdk")
+async def _search_with(ticket: str, query: str, top_k: int, kb_ids: list[str] | None) -> list[dict]:
     async with httpx.AsyncClient(timeout=20) as http:
         r = await http.post(f"{cfg.pdk_url}/api/v1/search", headers={"Authorization": f"Bearer {ticket}"},
                             json={"query": query, "top_k": top_k, "kb_ids": kb_ids or None})
@@ -342,19 +343,108 @@ async def _llm_stream(question: str, history: list[dict], hits: list[dict], deep
                         yield delta
 
 
+class Run:
+    """一次问答的执行过程：按步骤推送 plan / step 事件，前端渲染为“执行过程”时间线；结果随消息保存，历史对话可回看。"""
+
+    def __init__(self, steps: list[tuple[str, str]]):
+        self.t0 = time.perf_counter()
+        self.steps = [{"key": k, "name": n, "status": "pending", "detail": None, "result": None, "warn": None, "ms": None}
+                      for k, n in steps]
+        self._start: dict[str, float] = {}
+
+    def _get(self, key: str) -> dict:
+        return next(x for x in self.steps if x["key"] == key)
+
+    def begin(self, key: str, detail: str | None = None) -> bytes:
+        st = self._get(key)
+        st.update(status="running", detail=detail or st["detail"])
+        self._start[key] = time.perf_counter()
+        return _sse("step", st)
+
+    def end(self, key: str, status: str = "done", **kw: Any) -> bytes:
+        st = self._get(key)
+        st.update(status=status, ms=int((time.perf_counter() - self._start.get(key, time.perf_counter())) * 1000), **kw)
+        return _sse("step", st)
+
+    def skip_rest(self) -> list[bytes]:
+        out = []
+        for st in self.steps:
+            if st["status"] == "pending":
+                st["status"] = "skipped"
+                out.append(_sse("step", st))
+        return out
+
+    @property
+    def elapsed_ms(self) -> int:
+        return int((time.perf_counter() - self.t0) * 1000)
+
+
+async def _kb_scope(ticket: str) -> list[dict]:
+    async with httpx.AsyncClient(timeout=10) as http:
+        r = await http.get(f"{cfg.pdk_url}/api/v1/kbs", headers={"Authorization": f"Bearer {ticket}"})
+    body = r.json()
+    return body.get("data") or [] if body.get("code") == 0 else []
+
+
 async def _direct(session_id: str, conv: dict, sess: dict, req: ChatReq, can_search: bool) -> AsyncIterator[bytes]:
-    t0 = time.perf_counter()
-    yield _sse("meta", {"conversation_id": conv["id"]})
-    hits: list[dict] = []
-    if can_search:
-        yield _sse("progress", {"stage": "search", "message": "正在检索知识库…"})
-        try:
-            hits = await _search(session_id, sess, req.message, 8 if req.mode == "deep" else 5, req.kb_ids)
-        except Exception as e:  # noqa: BLE001
-            yield _sse("error", {"message": f"知识检索失败：{e}"})
-            return
-        yield _sse("citations", {"items": hits})
-    yield _sse("progress", {"stage": "answer", "message": "正在组织回答…"})
+    run = Run([("auth", "身份与权限校验"), ("scope", "确定检索范围"), ("search", "知识检索 · pdk_search"),
+               ("mask", "敏感信息处理"), ("answer", "生成回答"), ("audit", "记录审计")])
+    yield _sse("meta", {"conversation_id": conv["id"], "run_id": "run_" + uuid.uuid4().hex[:8], "mode": req.mode,
+                        "model": cfg.llm_model if cfg.llm_url else "检索摘要（未配置大模型）"})
+    yield _sse("plan", {"text": "好的，我会先在您有权限访问的知识库中检索相关依据，再基于检索结果给出带引用的回答。",
+                        "steps": run.steps})
+
+    # 1. 身份与权限
+    yield run.begin("auth", "检查“知识检索工具”权限，并以您的身份换取访问 PDK 的短时票据")
+    if not can_search:
+        yield run.end("auth", "error", warn="缺少权限 pda:tool:pdk_search，可在 PDS 申请")
+        for b in run.skip_rest():
+            yield b
+        text = "您还没有使用知识检索工具的权限，可在 PDS 申请“知识检索工具”后再试。"
+        yield _sse("delta", {"text": text})
+        yield _sse("done", _finish(conv, sess, text, [], run))
+        return
+    try:
+        ticket = await asyncio.to_thread(pds.exchange, session_id, sess["access_token"], "pdk")
+    except Exception as e:  # noqa: BLE001
+        yield run.end("auth", "error", warn=f"换取票据失败：{e.__class__.__name__}")
+        for b in run.skip_rest():
+            yield b
+        yield _sse("error", {"message": "统一权限服务暂不可用，请稍后重试"})
+        return
+    yield run.end("auth", result="权限通过 · 票据有效期 5 分钟（aud=pdk）")
+
+    # 2. 检索范围
+    yield run.begin("scope", "按 PDS 授权确定可检索的知识库、景区范围与密级")
+    kbs = await _kb_scope(ticket)
+    names = "、".join(k["name"] for k in kbs[:4]) + (" 等" if len(kbs) > 4 else "")
+    yield run.end("scope", result=f"可访问 {len(kbs)} 个知识库：{names}" if kbs else None,
+                  warn=None if kbs else "当前没有可访问的知识库")
+
+    # 3. 检索
+    top_k = 8 if req.mode == "deep" else 5
+    yield run.begin("search", f"检索问题：{req.message[:60]} · 混合召回（向量 + 关键词）后取前 {top_k} 条")
+    try:
+        hits = await _search_with(ticket, req.message, top_k, req.kb_ids) if kbs else []
+    except Exception as e:  # noqa: BLE001
+        yield run.end("search", "error", warn=f"检索失败：{e}")
+        for b in run.skip_rest():
+            yield b
+        yield _sse("error", {"message": f"知识检索失败：{e}"})
+        return
+    docs = {h["source"]["doc_id"] for h in hits}
+    kbn = {h["source"]["kb_id"] for h in hits}
+    yield _sse("citations", {"items": hits})
+    yield run.end("search", result=f"→ 返回 {len(hits)} 条切片 · {len(docs)} 篇文档 · {len(kbn)} 个知识库",
+                  warn=None if hits else "没有找到相关内容")
+
+    # 4. 脱敏
+    yield run.begin("mask", "识别手机号、身份证号等敏感信息，按您的权限掩码")
+    masked = sum(1 for h in hits if h.get("masked"))
+    yield run.end("mask", result=f"{masked} 条切片含敏感信息，已掩码" if masked else "未发现需要掩码的内容")
+
+    # 5. 生成
+    yield run.begin("answer", f"调用大模型 {cfg.llm_model} 基于检索结果生成" if cfg.llm_url else "未配置大模型，整理检索摘要")
     parts: list[str] = []
     try:
         if cfg.llm_url:
@@ -362,26 +452,35 @@ async def _direct(session_id: str, conv: dict, sess: dict, req: ChatReq, can_sea
                 parts.append(delta)
                 yield _sse("delta", {"text": mask_text(delta)})
         else:
-            text = _extractive(req.message, hits) if can_search else "您还没有使用知识检索工具的权限，可在 PDS 申请。"
+            text = _extractive(req.message, hits)
             for i in range(0, len(text), 12):  # 分段输出，与流式体验一致
                 parts.append(text[i:i + 12])
                 yield _sse("delta", {"text": text[i:i + 12]})
                 await asyncio.sleep(0.015)
     except Exception as e:  # noqa: BLE001
+        yield run.end("answer", "error", warn=f"生成失败：{e.__class__.__name__}")
+        for b in run.skip_rest():
+            yield b
         yield _sse("error", {"message": f"生成回答失败：{e.__class__.__name__}"})
         return
     full = mask_text("".join(parts))
-    yield _sse("done", _finish(conv, sess, full, hits))
-    asyncio.create_task(_audit(sess, req.message, hits, int((time.perf_counter() - t0) * 1000),
-                               sum(1 for h in hits if h.get("masked"))))
+    yield run.end("answer", result=f"输出 {len(full)} 字 · 引用 {min(len(hits), 3 if not cfg.llm_url else len(hits))} 条依据")
+
+    # 6. 审计（异步上报，不阻塞回答）
+    yield run.begin("audit", "问答记录（问题、命中文档、脱敏情况）上报 PDS 审计中心")
+    asyncio.create_task(_audit(sess, req.message, hits, run.elapsed_ms, masked))
+    yield run.end("audit", result="已提交")
+    yield _sse("done", _finish(conv, sess, full, hits, run))
 
 
 async def _hermes(session_id: str, conv: dict, sess: dict) -> AsyncIterator[bytes]:
     headers = {"Authorization": f"Bearer {cfg.hermes_api_key}", "X-Hermes-Session-Id": session_id,
                "X-Hermes-Session-Key": f"pda:user:{sess['user_id']}", "Idempotency-Key": uuid.uuid4().hex}
     history = [{"role": m["role"], "content": m["content"]} for m in conv["messages"][-20:]]
-    yield _sse("meta", {"conversation_id": conv["id"]})
-    yield _sse("progress", {"stage": "answer", "message": "正在思考…"})
+    run = Run([("agent", "智能体处理（工具调用由 hermes 执行，权限守卫插件逐次校验）")])
+    yield _sse("meta", {"conversation_id": conv["id"], "run_id": "run_" + uuid.uuid4().hex[:8], "model": cfg.default_model})
+    yield _sse("plan", {"text": "", "steps": run.steps})
+    yield run.begin("agent")
     parts: list[str] = []
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(120, connect=5)) as http:
@@ -400,7 +499,8 @@ async def _hermes(session_id: str, conv: dict, sess: dict) -> AsyncIterator[byte
     except httpx.HTTPError as e:
         yield _sse("error", {"message": f"无法连接智能体服务：{e.__class__.__name__}"})
         return
-    yield _sse("done", _finish(conv, sess, mask_text("".join(parts)), []))
+    yield run.end("agent")
+    yield _sse("done", _finish(conv, sess, mask_text("".join(parts)), [], run))
 
 
 # ------------------------------------------------------------------ 反馈

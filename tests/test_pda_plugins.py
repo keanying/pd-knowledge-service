@@ -61,3 +61,16 @@ def test_gateway_extractive_answer():
     out = _extractive("优惠", hits)
     assert "**须知 > 优惠**：老人免票。 [1]" in out and "| 雷峰塔 | 40 |" in out and "[2]" in out
     assert "没有找到" in _extractive("x", [])
+
+
+def test_gateway_run_steps():
+    from pda.gateway.app import Run
+
+    run = Run([("a", "第一步"), ("b", "第二步"), ("c", "第三步")])
+    assert b'"status": "running"' in run.begin("a", "说明")
+    ev = run.end("a", result="完成")
+    assert b'"status": "done"' in ev and run.steps[0]["ms"] is not None and run.steps[0]["result"] == "完成"
+    run.begin("b")
+    run.end("b", "error", warn="失败原因")
+    run.skip_rest()
+    assert [s["status"] for s in run.steps] == ["done", "error", "skipped"]

@@ -2,7 +2,7 @@ export interface Citation {
   chunk_id: string; text: string; score: number; masked: boolean
   source: { kb_id: string; kb_name?: string; doc_id: string; doc_title: string; version_no?: number; page_no?: number; title_path?: string; url?: string }
 }
-export interface Message { role: 'user' | 'assistant'; content: string; citations?: Citation[]; feedback?: string | null; at?: number }
+export interface Message { role: 'user' | 'assistant'; content: string; citations?: Citation[]; feedback?: string | null; at?: number; steps?: any[]; elapsed_ms?: number | null }
 export interface Conversation { id: string; title: string; updated_at: number; turns?: number; messages?: Message[] }
 export interface AppEntry { code: string; name: string; description?: string; categoryName?: string; homeUrl?: string }
 export interface Home {
@@ -25,7 +25,7 @@ export async function call<T>(method: string, url: string, body?: object): Promi
   return j.data as T
 }
 
-/** 流式问答：解析 SSE（meta / progress / citations / delta / done / error）。 */
+/** 流式问答：解析 SSE（meta / plan / step / progress / citations / delta / done / error）。 */
 export async function chatStream(body: object, on: (event: string, data: any) => void, signal?: AbortSignal) {
   const r = await fetch('/pda/chat', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
   if (r.status === 401) { login(); return }
