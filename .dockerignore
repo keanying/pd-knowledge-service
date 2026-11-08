@@ -4,3 +4,5 @@ var
 web/node_modules
 web/dist
 .git
+pda/portal/node_modules
+pda/portal/dist

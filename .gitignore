@@ -227,3 +227,4 @@ web/dist/
 # 本地运行数据（SQLite、对象存储、日志）
 var/
 .env
+pda/portal/dist/

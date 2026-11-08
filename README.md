@@ -4,10 +4,23 @@ PDK 知识服务：知识库 · 检索 · 知识更新（Python）
 
 所有知识类文档经 MinerU 解析、切片，存入 Milvus 向量库，通过 PDA（hermes-agent，对应客户架构中的 PAP 智能体平台）对外提供问答；权限由 PDS 统一控制。
 
-> 当前为**工程骨架**：分层结构、PDS 鉴权对接、接入流水线（解析 → 切片 → 向量化 → 审核 → 发布）、混合检索与权限过滤、MCP、PDA 网关与 hermes 插件、管理后台框架均已可运行；
-> 数据源、评测、统计、智能助手配置、治理台等模块按《产品功能文档》逐步实现，管理后台页面按 UX Pilot 设计稿完善。
+> 当前为**工程骨架**：分层结构、PDS 鉴权对接、接入流水线（解析 → 切片 → 向量化 → 审核 → 发布）、混合检索与权限过滤、MCP、
+> PDA 网关与 hermes 插件、**问答门户**、管理后台框架均已可运行；数据源、评测、统计、智能助手配置、治理台等模块按《产品功能文档》逐步实现。
 
-![命中测试](docs/images/pdk-kb-test.png)
+| 问答门户（员工登录后的首页） | 管理后台工作台 |
+|---|---|
+| ![问答门户](docs/images/portal-home.png) | ![工作台](docs/images/pdk-dashboard.png) |
+
+## 问答门户（PDA）
+
+员工通过 PDS 统一登录进入，首页按时段问候，提供输入框（快速/深度回答）、快捷问题，以及“最近引用的文档”“我的业务应用”（来自 PDS：本人有权进入的系统，点击跳转单点登录）“继续之前的对话”三张卡片。
+对话页流式输出，引用角标可展开查看出处（文档、版本、页码、章节），支持点赞、点踩（选原因）、纠错（生成 PDK 纠错工单并指派知识库负责人）、复制、重新生成、历史对话。
+
+- 后端：`pda/gateway`（`make gateway`），前端：`pda/portal`（`make portal`，http://127.0.0.1:5176）；生产随网关一起发布。
+- 智能体模式 `PDA_AGENT_MODE`：`hermes` 转发 hermes-agent（生产）；`direct` 由网关以用户身份（令牌交换）直连 PDK 检索作答——配置 `PDA_LLM_URL`（OpenAI 兼容）时由大模型基于检索结果生成，否则返回检索摘要。
+- 问答内容按用户权限检索、出站二次脱敏，问答记录上报 PDS 审计（`AI_CHAT`）。
+
+![对话](docs/images/portal-chat.png)
 
 ## 快速开始（零依赖开发模式）
 
@@ -73,12 +86,13 @@ pdk/
 ├── mcp/                  # MCP Server（pdk_search、pdk_list_knowledge_bases）
 └── workers/              # Celery（pdk.parse / pdk.embed 队列）
 pda/
-├── gateway/              # pda-gateway：登录、会话上下文、转发 hermes（SSE）、出站脱敏
+├── gateway/              # pda-gateway：登录、会话上下文、问答（hermes / 直连检索）、反馈转工单、出站脱敏、审计
+├── portal/               # 问答门户前端（Vue3 + Tailwind）
 ├── hermes_plugins/       # pdk_tools（知识工具）、pds_guard（权限守卫/脱敏/审计）、pd_common
 ├── persona/SOUL.md       # 中文人设
 ├── skills/               # 中文业务技能
 └── manifest.py           # PDA 权限清单
-web/                      # 管理后台（Vue3 + View UI Plus + Tailwind，与 PDS 后台同一设计语言）
+web/                      # 管理后台（Vue3 + View UI Plus + Tailwind，靛蓝主题）
 migrations/               # Alembic 迁移
 deploy/docker-compose.yml # PostgreSQL / Redis / MinIO / Milvus / pdk-api / Worker / pda-gateway
 tests/                    # pytest

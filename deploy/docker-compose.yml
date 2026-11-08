@@ -98,6 +98,12 @@ services:
       PDA_PUBLIC_URL: ${PDA_PUBLIC_URL:-http://127.0.0.1:8100}
       PDA_PDS_ISSUER: ${PDS_ISSUER:-http://127.0.0.1:9000}
       PDA_CLIENT_SECRET: ${PDA_GATEWAY_SECRET:?请设置 PDA 网关客户端密钥}
+      PDA_PDK_URL: http://pdk-api:8000
+      # hermes：转发 hermes-agent（生产）；direct：网关直连 PDK 检索作答（未部署 hermes 时）
+      PDA_AGENT_MODE: ${PDA_AGENT_MODE:-hermes}
+      PDA_LLM_URL: ${PDA_LLM_URL:-}
+      PD_PDS_ISSUER: ${PDS_ISSUER:-http://127.0.0.1:9000}
+      PD_PLUGIN_CLIENT_SECRET: ${PDA_PLUGIN_SECRET:?请设置 PDA 插件客户端密钥}
       PDA_HERMES_URL: ${HERMES_URL:-http://hermes:8642}
       PDA_HERMES_API_KEY: ${HERMES_API_SERVER_KEY:?请设置 hermes API_SERVER_KEY}
       PDA_REDIS_URL: redis://redis:6379/2

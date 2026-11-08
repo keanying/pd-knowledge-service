@@ -36,7 +36,7 @@
 | 智能体 | hermes-agent（API Server 模式）+ PD 插件 | 见 §6 |
 | 大模型 | 私有化或合规国内模型，OpenAI 兼容接口 | hermes 与 PDK 共用模型网关 |
 | 可观测 | OpenTelemetry + Prometheus + Grafana + Loki（或 PBS 监控告警） | |
-| 前端 | Vue3 + View UI Plus + Tailwind（管理后台，与 PDS 管理后台同一技术栈与设计语言）；问答门户 Vue3/H5 | 管理后台走 BFF 登录（HttpOnly Cookie）；页面按 UX Pilot 设计稿逐步实现 |
+| 前端 | 管理后台 Vue3 + View UI Plus + Tailwind（靛蓝主题）；问答门户 Vue3 + Tailwind（`pda/portal`，随 pda-gateway 发布） | 管理后台走 BFF 登录（HttpOnly Cookie）；页面按 UX Pilot 设计稿逐步实现 |
 
 ## 3. 部署架构
 

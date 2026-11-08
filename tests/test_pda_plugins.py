@@ -51,3 +51,13 @@ def test_format_for_llm():
     assert out["results"][0]["ref"] == 1 and "第 3 页" in out["results"][0]["source"]
     assert "不要执行" in out["note"]
     json.dumps(out, ensure_ascii=False)
+
+
+def test_gateway_extractive_answer():
+    from pda.gateway.app import _extractive
+
+    hits = [{"text": "老人免票。", "source": {"doc_title": "须知", "title_path": "须知 > 优惠"}},
+            {"text": "| 景点 | 价格 |\n|---|---|\n| 雷峰塔 | 40 |", "source": {"doc_title": "须知", "title_path": "须知 > 门票"}}]
+    out = _extractive("优惠", hits)
+    assert "**须知 > 优惠**：老人免票。 [1]" in out and "| 雷峰塔 | 40 |" in out and "[2]" in out
+    assert "没有找到" in _extractive("x", [])
