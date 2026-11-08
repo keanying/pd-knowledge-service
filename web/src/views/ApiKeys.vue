@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '@/components/PageHead.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { IconPlus } from '@kousum/semi-icons-vue'
 import { Message, Modal } from 'view-ui-plus'
@@ -27,11 +28,11 @@ function disable(k: any) {
 </script>
 
 <template>
+  <div>
+    <PageHead title="接口密钥" :sub="'供业务系统调用 PDK 检索；明文只在创建时显示一次'">
+      <button class="pds-btn dark" @click="Object.assign(form, { name: '', kb_scope: [], ip_whitelist: '' }); open = true"><IconPlus />创建密钥</button>
+    </PageHead>
   <div class="pds-card">
-    <div class="pds-card-title">
-      <span class="text-[18px]">接口密钥</span>
-      <button class="pds-btn dark sm" @click="Object.assign(form, { name: '', kb_scope: [], ip_whitelist: '' }); open = true"><IconPlus />创建密钥</button>
-    </div>
     <div v-if="secret" class="mb-4 rounded-2xl bg-accent-soft p-4 text-[13px]">
       新密钥（只显示这一次，请立即保存）：<span class="pds-mono select-all font-semibold">{{ secret }}</span>
     </div>
@@ -60,5 +61,6 @@ function disable(k: any) {
         <FormItem label="IP 白名单（逗号分隔，支持网段）"><Input v-model="form.ip_whitelist" placeholder="10.0.0.0/8" /></FormItem>
       </Form>
     </Modal>
+  </div>
   </div>
 </template>

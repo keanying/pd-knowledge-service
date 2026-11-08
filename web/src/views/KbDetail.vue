@@ -89,7 +89,7 @@ async function test() {
       </div>
       <div v-if="kb.description" class="mt-2 text-[13px] text-muted">{{ kb.description }}</div>
       <div class="mt-4 flex gap-2">
-        <button v-for="t in [['docs', '文档'], ['test', '命中测试']]" :key="t[0]" class="pds-pill" :class="tab === t[0] ? 'bg-ink! text-white!' : ''" @click="tab = t[0]">{{ t[1] }}</button>
+        <button v-for="t in [['docs', '文档'], ['test', '命中测试']]" :key="t[0]" class="pds-pill" :class="{ on: tab === t[0] }" @click="tab = t[0]">{{ t[1] }}</button>
       </div>
     </div>
 

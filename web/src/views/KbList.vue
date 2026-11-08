@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { IconPlus, IconSearch } from '@kousum/semi-icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import PageHead from '@/components/PageHead.vue'
+import { IconPlus, IconSearch, IconBookStroked } from '@kousum/semi-icons-vue'
 import { Message } from 'view-ui-plus'
 import { api, SECURITY, type Kb } from '@/api'
 import { useSession } from '@/stores/session'
@@ -12,11 +13,13 @@ const router = useRouter()
 const list = ref<Kb[]>([])
 const keyword = ref('')
 const loading = ref(false)
+const COLORS = ['bg-primary', 'bg-cyan', 'bg-pink', 'bg-blue', 'bg-orange']
 async function load() {
   loading.value = true
   try { list.value = await api.kbs({ keyword: keyword.value || undefined }) } finally { loading.value = false }
 }
-onMounted(load)
+const route = useRoute()
+onMounted(async () => { await load(); if (route.query.create) create() })
 
 const open = ref(false)
 const form = reactive({ name: '', description: '', category: '', scenic_id: '', default_security_level: 1, review_required: false })
@@ -34,25 +37,30 @@ async function save() {
 </script>
 
 <template>
-  <div class="pds-card">
-    <div class="mb-5 flex items-center gap-3">
-      <div class="text-[18px] font-semibold text-ink">知识库</div>
-      <div class="flex-1" />
-      <label class="pds-search w-[260px]"><IconSearch /><input v-model="keyword" placeholder="搜索知识库名称" @keyup.enter="load" /></label>
+  <div>
+    <PageHead title="知识库" :sub="`共 ${list.length} 个可访问的知识库`">
+      <label class="pds-search white w-[260px]"><IconSearch /><input v-model="keyword" placeholder="搜索知识库名称" @keyup.enter="load" /></label>
       <button v-if="session.has('pdk:kb:create')" class="pds-btn dark" @click="create"><IconPlus />新建知识库</button>
-    </div>
-    <div v-if="!loading && !list.length" class="py-16 text-center pds-muted">暂无可访问的知识库</div>
-    <div class="grid grid-cols-3 gap-4">
-      <button v-for="k in list" :key="k.id" class="cursor-pointer rounded-[20px] border-0 bg-row p-5 text-left transition-colors hover:bg-[#E8EEE3]" @click="router.push(`/kbs/${k.id}`)">
-        <div class="flex items-center gap-2">
-          <span class="text-[15px] font-semibold text-ink">{{ k.name }}</span>
-          <span class="pds-badge white">{{ k.scenic_id === 'GROUP' ? '集团' : k.scenic_id }}</span>
-          <span class="pds-badge gray">{{ SECURITY[k.default_security_level] }}</span>
-          <span v-if="k.review_required" class="pds-badge warn">需审核</span>
+    </PageHead>
+    <div v-if="!loading && !list.length" class="pds-card py-16 text-center pds-muted">暂无可访问的知识库</div>
+    <div class="grid grid-cols-3 gap-5">
+      <button v-for="(k, i) in list" :key="k.id" class="cursor-pointer rounded-[24px] border-0 bg-white p-6 text-left transition-shadow hover:shadow-[0_10px_28px_rgba(30,34,53,.08)]" @click="router.push(`/kbs/${k.id}`)">
+        <div class="flex items-start gap-4">
+          <span class="flex size-12 shrink-0 items-center justify-center rounded-2xl text-white" :class="COLORS[i % COLORS.length]"><IconBookStroked /></span>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-[16px] font-semibold text-ink">{{ k.name }}</div>
+            <div class="mt-1 flex flex-wrap gap-1.5">
+              <span class="pds-badge gray">{{ k.scenic_id === 'GROUP' ? '集团' : '本景区' }}</span>
+              <span class="pds-badge gray">{{ SECURITY[k.default_security_level] }}</span>
+              <span v-if="k.review_required" class="pds-badge warn">需审核</span>
+            </div>
+          </div>
         </div>
-        <div class="mt-2 line-clamp-2 min-h-[36px] text-[13px] text-muted">{{ k.description || '—' }}</div>
-        <div class="mt-3 flex gap-4 text-[12px] text-muted">
-          <span>文档 {{ k.doc_count }}</span><span>切片 {{ k.chunk_count }}</span><span class="ml-auto">{{ formatTime(k.updated_at) }}</span>
+        <div class="mt-3 line-clamp-2 min-h-[40px] text-[13px] leading-5 text-muted">{{ k.description || '暂无描述' }}</div>
+        <div class="mt-4 flex items-center gap-5 border-t border-line pt-4 text-[12px] text-muted">
+          <span><b class="text-[16px] text-ink">{{ k.doc_count }}</b> 文档</span>
+          <span><b class="text-[16px] text-ink">{{ k.chunk_count }}</b> 切片</span>
+          <span class="ml-auto">{{ formatTime(k.updated_at) }}</span>
         </div>
       </button>
     </div>

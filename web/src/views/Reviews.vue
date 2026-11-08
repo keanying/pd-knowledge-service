@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '@/components/PageHead.vue'
 import { onMounted, ref } from 'vue'
 import { Message } from 'view-ui-plus'
 import { api } from '@/api'
@@ -15,8 +16,9 @@ async function act(r: any, ok: boolean) {
 </script>
 
 <template>
+  <div>
+    <PageHead title="审核中心" :sub="`待我审核 ${list.length} 项`"></PageHead>
   <div class="pds-card">
-    <div class="pds-card-title"><span class="text-[18px]">待我审核（{{ list.length }}）</span></div>
     <div v-for="r in list" :key="r.version_id" class="mb-3 flex items-center gap-4 rounded-2xl bg-row px-5 py-4">
       <div class="flex-1">
         <div class="font-medium text-ink">{{ r.title }} <span class="pds-muted">v{{ r.version_no }}</span></div>
@@ -26,5 +28,6 @@ async function act(r: any, ok: boolean) {
       <button class="pds-btn dark sm" @click="act(r, true)">通过并发布</button>
     </div>
     <div v-if="!list.length" class="py-16 text-center pds-muted">没有待审核的内容</div>
+  </div>
   </div>
 </template>

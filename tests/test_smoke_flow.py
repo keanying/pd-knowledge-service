@@ -67,3 +67,14 @@ async def test_full_flow(client, wait):
     # 下线后不可检索
     ok(await client.post(f"/api/v1/documents/{up['document_id']}:offline", headers=H))
     assert ok(await client.post("/api/v1/search", json={"query": "学生 优惠"}, headers=H))["items"] == []
+
+
+async def test_overview_week(client, wait):
+    H = {"X-Dev-User": "u_admin", "X-Dev-Scenic": "S001"}
+    kb = ok(await client.post("/api/v1/kbs", json={"name": "库", "scenic_id": "S001"}, headers=H))
+    ok(await client.post(f"/api/v1/kbs/{kb['id']}/documents", headers=H, files={"file": ("a.md", DOC_V1.encode())}))
+    await wait()
+    o = ok(await client.get("/api/v1/stats/overview", headers=H))
+    assert o["kb_count"] == 1 and o["doc_count"] == 1 and len(o["week"]) == 7
+    assert o["week"][-1]["uploads"] == 1 and o["week"][-1]["published"] == 1
+    assert o["events"][0]["title"] == "a" and o["my_recent"][0]["title"] == "a"

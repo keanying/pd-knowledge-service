@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '@/components/PageHead.vue'
 import { onMounted, ref } from 'vue'
 import { Message } from 'view-ui-plus'
 import { api, TASK_STATUS } from '@/api'
@@ -21,13 +22,13 @@ const STEP: Record<string, string> = { parse: '解析', chunk: '切片', index: 
 </script>
 
 <template>
-  <div class="pds-card">
-    <div class="pds-card-title">
-      <span class="text-[18px]">任务中心</span>
+  <div>
+    <PageHead title="任务中心" :sub="`共 ${total} 个任务`">
       <Select v-model="status" style="width: 140px" clearable placeholder="全部状态" @on-change="load">
         <Option v-for="(v, k) in TASK_STATUS" :key="k" :value="k">{{ v[0] }}</Option>
       </Select>
-    </div>
+    </PageHead>
+  <div class="pds-card">
     <table class="w-full border-collapse text-[13px]">
       <thead><tr class="bg-row text-left text-muted">
         <th class="rounded-l-xl px-4 py-3 font-normal">任务</th><th class="px-4 font-normal">状态</th><th class="px-4 font-normal">步骤</th>
@@ -46,5 +47,6 @@ const STEP: Record<string, string> = { parse: '解析', chunk: '切片', index: 
       </tbody>
     </table>
     <div v-if="total > 20" class="mt-4 flex justify-end"><Page :total="total" :page-size="20" v-model="page" @on-change="load" /></div>
+  </div>
   </div>
 </template>

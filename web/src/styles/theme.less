@@ -1,20 +1,20 @@
-// View UI Plus 主题：采用设计稿配色（深炭灰 + 黄绿）。
+// View UI Plus 主题：PDK 管理后台配色（靛蓝主色）。
 // 整体放入最低优先级的级联层 viewui，避免其全局重置（div { padding: 0 } 等）覆盖 Tailwind 工具类；
 // 主题变量必须写在层内的 @import 之后才能覆盖（Less 作用域规则）。
 @layer viewui {
   @import 'view-ui-plus/src/styles/index.less';
 
-  @primary-color: #1F2421;
-  @info-color: #1F2421;
+  @primary-color: #6366F1;
+  @info-color: #6366F1;
   @success-color: #4A7A22;
   @warning-color: #D97706;
   @error-color: #EF4444;
-  @link-color: #4A7A22;
+  @link-color: #4F46E5;
   @border-radius-base: 12px;
   @border-radius-small: 8px;
   @font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
-  @table-thead-bg: #F3F6F0;
-  @table-td-highlight-bg: #F6FAEF;
+  @table-thead-bg: #F5F6FA;
+  @table-td-highlight-bg: #F4F4FF;
   @btn-border-radius: 20px;
   @btn-border-radius-small: 16px;
   @input-height-base: 36px;
@@ -23,13 +23,13 @@
   // 弹窗、抽屉与设计稿圆角一致
   .ivu-modal-content { border-radius: 20px; }
   .ivu-modal-header { border-bottom: 0; padding: 20px 24px 8px; }
-  .ivu-modal-header-inner { font-size: 16px; font-weight: 600; color: #1F2421; }
+  .ivu-modal-header-inner { font-size: 16px; font-weight: 600; color: #1E2235; }
   .ivu-modal-body { padding: 12px 24px 20px; }
   .ivu-modal-footer { border-top: 0; padding: 0 24px 20px; }
   .ivu-drawer-content { border-radius: 20px 0 0 20px; }
   .ivu-select-selection, .ivu-input { border-color: #E5E7EB; }
-  .ivu-radio-group-button .ivu-radio-wrapper-checked { background: #1F2421; color: #fff; border-color: #1F2421; box-shadow: none; }
+  .ivu-radio-group-button .ivu-radio-wrapper-checked { background: #6366F1; color: #fff; border-color: #6366F1; box-shadow: none; }
   .ivu-radio-group-button .ivu-radio-wrapper-checked:hover { color: #fff; }
-  .ivu-switch-checked { border-color: #A3D65C; background-color: #A3D65C; }
+  .ivu-switch-checked { border-color: #6366F1; background-color: #6366F1; }
   .ivu-switch-checked:after { background: #fff; }
 }
