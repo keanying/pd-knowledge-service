@@ -32,11 +32,11 @@
 | 缓存 | Redis 7 | 权限快照、会话上下文、限流 |
 | 对象存储 | MinIO / PBS 对象存储（S3 协议） | |
 | 消息 | PBS 消息总线（RocketMQ/Kafka） | 权限变更事件、回流事件、审计事件 |
-| MCP | 官方 `mcp` Python SDK（Streamable HTTP） | 挂载在 FastAPI 下 |
+| MCP | 官方 `mcp` Python SDK 2.x（`MCPServer`，Streamable HTTP） | 挂载在 FastAPI 下 |
 | 智能体 | hermes-agent（API Server 模式）+ PD 插件 | 见 §6 |
 | 大模型 | 私有化或合规国内模型，OpenAI 兼容接口 | hermes 与 PDK 共用模型网关 |
 | 可观测 | OpenTelemetry + Prometheus + Grafana + Loki（或 PBS 监控告警） | |
-| 前端（后续） | Vue3 + Element Plus（管理后台）；问答门户 Vue3/H5 | UI 由 UX Pilot 出稿后实现 |
+| 前端 | Vue3 + View UI Plus + Tailwind（管理后台，与 PDS 管理后台同一技术栈与设计语言）；问答门户 Vue3/H5 | 管理后台走 BFF 登录（HttpOnly Cookie）；页面按 UX Pilot 设计稿逐步实现 |
 
 ## 3. 部署架构
 

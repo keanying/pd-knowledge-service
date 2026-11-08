@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- PDK ----
+# 前端源码中的 lib 目录不忽略（上面的 Python 规则会误伤）
+!web/src/lib/
+node_modules/
+web/dist/
+# 本地运行数据（SQLite、对象存储、日志）
+var/
+.env

@@ -1,0 +1,4 @@
+# hermes-agent 插件描述（字段以部署的 hermes 版本为准，POC 第一周核对）
+name: pds_guard
+version: 0.1.0
+entry: __init__:register
